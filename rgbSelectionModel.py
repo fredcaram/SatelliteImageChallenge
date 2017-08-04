@@ -33,10 +33,10 @@ def getKmeansWithNewRGB(filePath, model, redimImageSize:list):
     imgHelper = imageHelper(filePath)
     imgHelper.imageSize = redimImageSize
     testRgbArray = imgHelper.prepImageArray()
-    cleanedRgbArray = np.where(x < 5, x, -1)(testRgbArray[:, 0] != 0 & testRgbArray[:, 0] != 0 & testRgbArray[:, 0] != 2)
-    testRgbArray = testRgbArray[cleanedRgbArray, :]
-    testCluster = model.predict(testRgbArray)
-    testDf = pd.DataFrame(testRgbArray)
+    cleanedRgbArray =  testRgbArray[np.logical_and(testRgbArray[:, 0] != 0, testRgbArray[:, 1] != 0, testRgbArray[:, 2] != 0), :]
+    cleanedRgbArray = cleanedRgbArray[np.logical_and(cleanedRgbArray[:, 0] != 255, cleanedRgbArray[:, 1] != 255, cleanedRgbArray[:, 2] != 255), :]
+    testCluster = model.predict(cleanedRgbArray)
+    testDf = pd.DataFrame(cleanedRgbArray)
     testDf.columns = ["R", "G", "B"]
     testDf["cluster"] = testCluster
 

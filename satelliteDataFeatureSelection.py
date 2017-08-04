@@ -26,11 +26,12 @@ pixelsToRemove = rgbSelectionModel.GetPixelsToReplace(dir + testFile, kMeansmode
 #testRGBSelectionModel.testKMeansBasedRGBSelectionModel(dir + testFile, kMeansmodel, redimImageSize, pixelsToRemove)
 
 #Use kmeans to select color features for model training
+#With k-mean = 10 I got only a 0.2672 F-measure score for the score model
 nclusters = 10
-kmeansRGBModelFilename = 'kMeansRGBSelectionModel.sav'
+#kmeansRGBModelFilename = 'kMeansRGBSelectionModel.sav'
 #kmeansRGBModel =rgbSelectionModel.getKMeansBasedRGBSelectionModel(dir, redimImageSize, nclusters, pixelsToRemove)
 #pickle.dump(kmeansRGBModel, open(kmeansRGBModelFilename, 'wb'))
-kmeansRGBModel = pickle.load(open(kmeansRGBModelFilename, 'rb'))
+#kmeansRGBModel = pickle.load(open(kmeansRGBModelFilename, 'rb'))
 #testRGBSelectionModel.testKMeansBasedRGBSelectionModel(dir + testFile, kmeansRGBModel, redimImageSize, pixelsToRemove)
 
 #Plot the original image
