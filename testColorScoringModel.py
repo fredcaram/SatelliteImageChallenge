@@ -1,5 +1,5 @@
 from imageHelper import imageHelper
-import rgbSelectionModel
+import colorScoringModel
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,19 +13,9 @@ def testFlattenAndReshape(filePath, redimImageSize:tuple):
     plt.show()
 
 
-def testSVMBasedColorScoringModel(filePath, rgbModel, scoreModel, redimImageSize:list, pixelsToRemove):
+def testSVMBasedColorScoringModel(filePath, scoreModel, redimImageSize:list, pixelsToRemove):
     imgHelper = imageHelper(filePath)
     imgHelper.imageSize = redimImageSize
-    newDf = rgbSelectionModel.getRGBDataFrame(rgbModel, pixelsToRemove, imgHelper)
-    newTestRGB = newDf.loc[:, ["NewR", "NewG", "NewB"]]
-    #newTestRGB = imgHelper.rgbTo3Dimensional(np.array(newTestRGB))
-    scoreArr = scoreModel.predict(np.array(newTestRGB.values))
-
-    plt.imshow(newTestRGB)
-    plt.table(cellText=pointsPerCluster.values, colWidths=[0.2] * len(pointsPerCluster.columns),
-              rowLabels=pointsPerCluster.index,
-              colLabels=pointsPerCluster.columns,
-              cellLoc='center', rowLoc='center',
-              rowColours=colors,
-              loc='top')
-    fig = plt.gcf()
+    score = colorScoringModel.GetImageScore(imgHelper, pixelsToRemove, scoreModel)
+    plt.text(0, 0, 'Score = {0}'.format(score))
+    imgHelper.justDisplayImage()

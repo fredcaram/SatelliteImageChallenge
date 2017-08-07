@@ -5,7 +5,7 @@ from imageHelper import imageHelper
 from sklearn.decomposition import PCA, NMF
 import pandas as pd
 
-def getKMeansBasedRGBSelectionModel(dir, redimImageSize:tuple, n_clusters=10, pixelsToRemove=[]):
+def getKMeansBasedRGBSelectionModel(dir, redimImageSize:list, n_clusters=10, pixelsToRemove=[]):
     randomFiles = np.random.choice(os.listdir(dir), 40, replace=False)
     imgRgbArr = []
     for file in randomFiles:
@@ -33,10 +33,8 @@ def getKmeansWithNewRGB(filePath, model, redimImageSize:list):
     imgHelper = imageHelper(filePath)
     imgHelper.imageSize = redimImageSize
     testRgbArray = imgHelper.prepImageArray()
-    cleanedRgbArray =  testRgbArray[np.logical_and(testRgbArray[:, 0] != 0, testRgbArray[:, 1] != 0, testRgbArray[:, 2] != 0), :]
-    cleanedRgbArray = cleanedRgbArray[np.logical_and(cleanedRgbArray[:, 0] != 255, cleanedRgbArray[:, 1] != 255, cleanedRgbArray[:, 2] != 255), :]
-    testCluster = model.predict(cleanedRgbArray)
-    testDf = pd.DataFrame(cleanedRgbArray)
+    testCluster = model.predict(testRgbArray)
+    testDf = pd.DataFrame(testRgbArray)
     testDf.columns = ["R", "G", "B"]
     testDf["cluster"] = testCluster
 
@@ -93,8 +91,24 @@ def getPCABasedRGBSelectionModel(dir, redimImageSize:tuple, n_components=50):
 
     return pcaModel
 
+def getNMFBasedRGBflatteningModel(dir, redimImageSize:list, pixelsToRemove=[]):
+    randomFiles = np.random.choice(os.listdir(dir), 40, replace=False)
+    imgRgbArr = []
+    for file in randomFiles:
+        imgHelper = imageHelper(dir + file)
+        imgHelper.imageSize = redimImageSize
+        rgbArr = imgHelper.prepImageArray()
+        rgbArr[pixelsToRemove] = [0, 0, 0]
+        imgRgbArr.extend(rgbArr)
 
-def getNMFBasedRGBSelectionModel(dir, redimImageSize:tuple, n_components=50, pixelsToRemove=[]):
+    npRgbArray = np.array(imgRgbArr)
+
+    pcaModel = NMF(n_components=1)
+    pcaModel.fit(npRgbArray)
+
+    return pcaModel
+
+def getNMFBasedRGBSelectionModel(dir, redimImageSize:list, n_components=50, pixelsToRemove=[]):
     randomFiles = np.random.choice(os.listdir(dir), 40, replace=False)
     imgRgbArr = []
     for file in randomFiles:

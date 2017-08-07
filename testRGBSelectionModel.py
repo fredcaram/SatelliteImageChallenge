@@ -64,7 +64,19 @@ def testPCABasedRGBflatteningModel(filePath, model, redimImageSize:tuple):
     plt.imshow(newTestRGB)
     plt.show()
 
-def testPCABasedRGBSelectionModel(filePath, model, redimImageSize:tuple):
+
+def testNMFBasedRGBflatteningModel(filePath, model, redimImageSize:list, pixelToRemove=[]):
+    imgHelper = imageHelper(filePath)
+    imgHelper.imageSize = redimImageSize
+    testRgbArray = imgHelper.prepImageArray()
+    newFeatures = model.transform(testRgbArray)
+    reversedFeatures = model.inverse_transform(newFeatures)
+    newTestRGB = imgHelper.rgbTo3Dimensional(np.array(reversedFeatures))
+
+    plt.imshow(newTestRGB)
+    plt.show()
+
+def testPCABasedRGBSelectionModel(filePath, model, redimImageSize:list):
     imgHelper = imageHelper(filePath)
     imgHelper.imageSize = redimImageSize
     testRgbArray = imgHelper.prepImageArray().transpose()
@@ -75,7 +87,7 @@ def testPCABasedRGBSelectionModel(filePath, model, redimImageSize:tuple):
     plt.imshow(newTestRGB)
     plt.show()
 
-def testNMFBasedRGBSelectionModel(filePath, model, redimImageSize:tuple):
+def testNMFBasedRGBSelectionModel(filePath, model, redimImageSize:list, pixelsToRemove=[]):
     imgHelper = imageHelper(filePath)
     imgHelper.imageSize = redimImageSize
     testRgbArray = imgHelper.prepImageArray().transpose()
