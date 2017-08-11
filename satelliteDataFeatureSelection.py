@@ -1,35 +1,26 @@
 import pickle
-import numpy as np
-import os
-import pandas as pd
-import testColorScoringModel
-from imageHelper import imageHelper
-import colorScoringModel
-import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
 
-import rgbSelectionModel
-import testRGBSelectionModel
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+
+import colorScoringModel
+from background_helper import background_helper
+from imageHelper import imageHelper
 
 dir = "satelliteImages\\"
 kmeansModelFilename = 'kMeansBackgroundSelectionModel.sav'
 redimImageSize = [250, 253]
-
-#Remove background, sea and other countries to reduce noise
 backgroundClusters = 5
-#kMeansmodel = rgbSelectionModel.getKMeansBasedRGBSelectionModel(dir, redimImageSize, backgroundClusters)
-#pickle.dump(kMeansmodel, open(kmeansModelFilename, 'wb'))
-kMeansmodel = pickle.load(open(kmeansModelFilename, 'rb'))
-
-testFile = np.random.choice(os.listdir(dir), replace=False,)
-#clusterPoints = testRGBSelectionModel.getKmeansPointPerCluster(dir + testFile, kMeansmodel, redimImageSize)
 rgbsToRemove = [[210, 210, 255],#Water
                 [185, 185, 185],#Other Countries
                 [255, 255, 255]]#Background
-clustersToRemove = kMeansmodel.predict(rgbsToRemove)
-#clustersToReplace = [0, 2, 4]
-pixelsToRemove = rgbSelectionModel.GetPixelsToReplace(dir + testFile, kMeansmodel, redimImageSize, clustersToRemove)
-#testRGBSelectionModel.testKMeansBasedRGBSelectionModel(dir + testFile, kMeansmodel, redimImageSize, pixelsToRemove)
+
+#Remove background, sea and other countries to reduce noise
+bgHelper = background_helper(dir, kmeansModelFilename, redimImageSize, backgroundClusters, rgbsToRemove)
+pixelsToRemove = bgHelper.get_pixels_to_remove()
+#bgHelper.display_image_without_background()
 
 #Use kmeans to select color features for model training
 #With k-mean = 10 I got only a 0.2672 F-measure score for the score model
@@ -105,12 +96,16 @@ greenishImage = "map_BRA_y2005_w16.png"
 #for testingFile in testingFiles:
 #    testColorScoringModel.testSVMBasedColorScoringModel(dir + testingFile, scoreModel, redimImageSize, pixelsToRemove)
 
-fig, axes = plt.subplots(2)
+fig, axes = plt.subplots(3, sharex=True)
 agricultureProduction = pd.read_csv("FAOSTAT\\FAOSTAT_data_8-3-2017.csv")
 #Got 3 year before to use for the rolling mean
 agricultureProduction = agricultureProduction.loc[agricultureProduction["Year"] >= 1997,]
-agricultureProductionValue = agricultureProduction.sort_values("Year").groupby("Year")["Value"].mean()
-agricultureProductionRollingMean = agricultureProductionValue.rolling(window=3,center=True).mean()
+#Just Net Production
+agricultureProduction = agricultureProduction.loc[agricultureProduction["Element Code"] == 154]
+agricultureProduction = agricultureProduction.sort_values("Year")
+agricultureProductionValue = agricultureProduction.groupby("Year")["Value"].sum()
+#The rolling mean was used to represent the growing trend
+agricultureProductionRollingMean = agricultureProductionValue.rolling(window=2, center=False).mean()
 
 ind = 0
 imageScores = []
@@ -131,10 +126,75 @@ imageScoresDf.columns = ["Country", "Year", "Week", "Score"]
 imageScoreByYear = imageScoresDf.groupby("Year")["Score"].mean()
 
 #Plot productionXscore plot
-agricultureProductionValue[agricultureProductionValue.index >= 2000,:].plot(ax=axes[0], color='blue')
-agricultureProductionRollingMean[agricultureProductionRollingMean.index >= 2000,:].plot(ax=axes[0], color='red')
-imageScoreByYear.plot(ax=axes[1])
+agricultureProductionValueFrom2000 = agricultureProductionValue[agricultureProductionValue.index >= 2000]
+agricultureProductionRollingMeanFrom2000 = agricultureProductionRollingMean[agricultureProductionRollingMean.index >= 2000]
+agricultureProductionNormalizedFrom2000 = agricultureProductionValueFrom2000 - agricultureProductionRollingMeanFrom2000
+prodAndImageCov = np.corrcoef(
+    agricultureProductionNormalizedFrom2000[agricultureProductionNormalizedFrom2000.index <= 2013].values,
+    imageScoreByYear[imageScoreByYear.index <= 2013].values)
 
+# When comparing the production - rolling mean with the image greenish, a negative correlation was found (~0.44, ~0.42)
+#  when using window = 3 and = 2
+print(prodAndImageCov)
+plt.text(0, 0, 'Correlation = {0}'.format(prodAndImageCov))
+agricultureProductionValueFrom2000.plot(ax=axes[0], color='blue')
+agricultureProductionRollingMeanFrom2000.plot(ax=axes[0], color='red')
+agricultureProductionNormalizedFrom2000.plot(ax=axes[1])
+imageScoreByYear.plot(ax=axes[2])
+plt.show()
+
+agricultureByYearAndItem = agricultureProduction.groupby(["Year", "Item"])["Value"].mean()
+agricultureByYearAndItemRollingMean = agricultureByYearAndItem.rolling(window=3, center=False).mean()
+
+agricultureByYearAndItem = agricultureByYearAndItem.reset_index()
+agricultureByYearAndItem2000 = agricultureByYearAndItem[agricultureByYearAndItem["Year"] >= 2000]
+
+agricultureByYearAndItemRollingMean.name = "RollingMean"
+agricultureByYearAndItemRollingMean = agricultureByYearAndItemRollingMean.reset_index()
+agricultureByYearAndItemRollingMean2000 = agricultureByYearAndItemRollingMean[
+    agricultureByYearAndItemRollingMean["Year"] >= 2000]
+
+agricultureByYearAndItem2000 = agricultureByYearAndItem2000.merge(agricultureByYearAndItemRollingMean2000,
+                                                                  left_on=["Year", "Item"], right_on=["Year", "Item"])
+agricultureByYearAndItem2000["NormalizedValue"] = agricultureByYearAndItem2000["Value"] - agricultureByYearAndItem2000["RollingMean"]
+
+imageScoreByYear = imageScoreByYear.reset_index()
+agricultureByYearAndItem2000 = agricultureByYearAndItem2000.merge(imageScoreByYear, left_on="Year", right_on="Year")
+
+#pivotedAgricultureDf = agricultureByYearAndItem2000.pivot(index='Item', columns='Year', values=['RollingMean', 'Score'])
+#print(meltedAgricultureDf.head())
+
+itemCorrelations = []
+items = np.unique(agricultureByYearAndItem2000["Item"].values)
+for item in items:
+    agriculturePerItem = agricultureByYearAndItem2000[agricultureByYearAndItem2000["Item"] == item]
+    corr =  np.corrcoef(
+        agriculturePerItem["NormalizedValue"].values,
+        agriculturePerItem["Score"].values)
+    itemCorrelations.append(corr[0,1])
+
+aggriculturePerItemCorrelation = pd.DataFrame({"Item": items, "Correlation": itemCorrelations})
+#print(aggriculturePerItemCorrelation)
+#g = sns.FacetGrid(meltedAgricultureDf, hue="Item", row='variable', sharex=True, sharey=False)
+#g = g.map(sns.pointplot, "Year", "value")
+#plt.show()
+
+top10corrAsc = aggriculturePerItemCorrelation.sort_values("Correlation").head(10)
+top10corrDesc = aggriculturePerItemCorrelation.sort_values("Correlation", ascending=False).head(10)
+print(top10corrAsc)
+print(top10corrDesc)
+
+meltedAgricultureDf = pd.melt(agricultureByYearAndItem2000, id_vars=['Item', 'Year'], value_vars=['Score', 'NormalizedValue'])
+top10AscCorrAgricultureDf = meltedAgricultureDf.merge(top10corrAsc, how="inner", left_on="Item", right_on="Item")
+top10DescCorrAgricultureDf = meltedAgricultureDf.merge(top10corrDesc, how="inner", left_on="Item", right_on="Item")
+
+#Top 10 correlations
+g1 = sns.FacetGrid(top10AscCorrAgricultureDf, col="variable", row='Item', sharex=True, sharey=False, size=7)
+g1 = g1.map(sns.pointplot, "Year", "value")
+plt.show()
+
+g2 = sns.FacetGrid(top10DescCorrAgricultureDf, col="variable", row='Item', sharex=True, sharey=False, size=7)
+g2 = g2.map(sns.pointplot, "Year", "value")
 plt.show()
 
 #nmfModelFilename = 'kMeansBackgroundSelectionModel.sav'
