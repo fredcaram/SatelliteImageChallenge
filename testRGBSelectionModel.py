@@ -32,13 +32,13 @@ def testKMeansBasedRGBSelectionModel(filePath, model, redimImageSize:list, pixel
               for r,g,b in pointsPerCluster.loc[:,["NewR", "NewG", "NewB"]].values]
 
     plt.imshow(newTestRGB)
-    plt.table(cellText=pointsPerCluster.values, colWidths=[0.2] * len(pointsPerCluster.columns),
-              rowLabels=pointsPerCluster.index,
-              colLabels=pointsPerCluster.columns,
-              cellLoc='center', rowLoc='center',
-              rowColours=colors,
-              loc='top')
-    fig = plt.gcf()
+    #plt.table(cellText=pointsPerCluster.values, colWidths=[0.2] * len(pointsPerCluster.columns),
+    #          rowLabels=pointsPerCluster.index,
+    #          colLabels=pointsPerCluster.columns,
+    #          cellLoc='center', rowLoc='center',
+    #          rowColours=colors,
+    #          loc='top')
+    #fig = plt.gcf()
 
     plt.show()
 
